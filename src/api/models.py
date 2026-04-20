@@ -47,6 +47,7 @@ class PromptResult(BaseModel):
     prompt: str | None = None
     result: str | None = None
     cached: bool = False
+    cache_similarity: float | None = None
     processing_time_ms: int | None = None
     tokens_used: int | None = None
     model: str | None = None

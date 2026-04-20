@@ -235,6 +235,7 @@ async def get_prompt_result(
 @app.delete(
     "/prompts/{task_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     summary="Cancel a queued task",
 )
 async def cancel_task(
