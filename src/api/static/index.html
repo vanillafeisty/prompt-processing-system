@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Prompt Processing System</title>
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #151821;
+    --surface2: #1c2030;
+    --border: #252a3a;
+    --accent: #4f8ef7;
+    --accent2: #7c5cbf;
+    --green: #34d399;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* ── Layout ── */
+  .shell { display: grid; grid-template-rows: 56px 1fr; min-height: 100vh; }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px;
+    position: sticky; top: 0; z-index: 10;
+  }
+
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
+  .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .status-bar { display: flex; align-items: center; gap: 20px; }
+  .badge {
+    font-size: 11px; font-weight: 600; letter-spacing: .04em;
+    padding: 3px 10px; border-radius: 20px; text-transform: uppercase;
+  }
+  .badge-green { background: rgba(52,211,153,.12); color: var(--green); border: 1px solid rgba(52,211,153,.3); }
+  .badge-yellow { background: rgba(251,191,36,.12); color: var(--yellow); border: 1px solid rgba(251,191,36,.3); }
+  .badge-red { background: rgba(248,113,113,.12); color: var(--red); border: 1px solid rgba(248,113,113,.3); }
+
+  main { padding: 28px; display: flex; flex-direction: column; gap: 24px; max-width: 1300px; margin: 0 auto; width: 100%; }
+
+  /* ── Stat Cards ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    display: flex; flex-direction: column; gap: 6px;
+    transition: border-color .2s;
+  }
+  .stat-card:hover { border-color: rgba(79,142,247,.4); }
+  .stat-label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .stat-value { font-size: 28px; font-weight: 700; font-family: var(--mono); line-height: 1; }
+  .stat-value.green { color: var(--green); }
+  .stat-value.yellow { color: var(--yellow); }
+  .stat-value.blue { color: var(--accent); }
+  .stat-value.purple { color: #a78bfa; }
+  .stat-sub { font-size: 11px; color: var(--muted); }
+
+  /* ── Two column ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media(max-width: 860px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* ── Panel ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    font-weight: 600; font-size: 13px;
+  }
+  .panel-body { padding: 20px; }
+
+  /* ── Form ── */
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; letter-spacing: .05em; text-transform: uppercase; }
+
+  textarea, select, input[type=text] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color .2s;
+    resize: vertical;
+  }
+  textarea:focus, select:focus, input[type=text]:focus { border-color: var(--accent); }
+  textarea { min-height: 120px; font-family: var(--mono); font-size: 13px; }
+  select { cursor: pointer; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+
+  .checkbox-row { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .checkbox-row input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
+
+  button {
+    margin-top: 16px; width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none; border-radius: 8px;
+    padding: 11px 20px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: opacity .15s, transform .1s;
+  }
+  button:hover { opacity: .9; }
+  button:active { transform: scale(.98); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* ── Result box ── */
+  .result-box {
+    margin-top: 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    display: none;
+    max-height: 260px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .result-box.visible { display: block; }
+
+  .result-meta {
+    display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;
+  }
+  .meta-pill {
+    font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600;
+    background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+  }
+  .meta-pill.hit { background: rgba(52,211,153,.1); border-color: rgba(52,211,153,.3); color: var(--green); }
+  .meta-pill.miss { background: rgba(79,142,247,.1); border-color: rgba(79,142,247,.3); color: var(--accent); }
+
+  /* ── Activity feed ── */
+  .feed { display: flex; flex-direction: column; gap: 0; max-height: 420px; overflow-y: auto; }
+
+  .feed-item {
+    display: grid;
+    grid-template-columns: 6px 1fr auto;
+    gap: 12px; align-items: start;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    transition: background .15s;
+  }
+  .feed-item:last-child { border-bottom: none; }
+  .feed-item:hover { background: rgba(255,255,255,.02); }
+
+  .feed-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .feed-dot.completed { background: var(--green); }
+  .feed-dot.processing { background: var(--yellow); animation: pulse 1s infinite; }
+  .feed-dot.queued { background: var(--accent); }
+  .feed-dot.failed { background: var(--red); }
+  .feed-dot.cached { background: #a78bfa; }
+
+  .feed-prompt { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 280px; }
+  .feed-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .feed-time { font-size: 11px; color: var(--muted); font-family: var(--mono); white-space: nowrap; }
+
+  .empty-feed { padding: 40px 20px; text-align: center; color: var(--muted); font-size: 13px; }
+
+  /* ── Rate limit bar ── */
+  .rate-bar-wrap { margin-top: 4px; }
+  .rate-bar-track { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .rate-bar-fill { height: 100%; border-radius: 3px; transition: width .5s, background .3s; }
+
+  /* ── Spinner ── */
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.2); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── Header ── -->
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      Prompt Processing System
+    </div>
+    <div class="status-bar">
+      <span id="system-status" class="badge badge-yellow">Connecting…</span>
+      <span style="color:var(--muted);font-size:12px">Workers: <strong id="worker-count" style="color:var(--text)">—</strong></span>
+      <span style="color:var(--muted);font-size:12px">Rate limit: <strong id="rate-remain" style="color:var(--text)">—</strong>/min left</span>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ── Stats ── -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Completed</div>
+        <div class="stat-value green" id="s-completed">—</div>
+        <div class="stat-sub">total tasks</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Queue Depth</div>
+        <div class="stat-value blue" id="s-queue">—</div>
+        <div class="stat-sub">pending tasks</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Cache Hit Rate</div>
+        <div class="stat-value purple" id="s-cache">—</div>
+        <div class="stat-sub">semantic cache</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Latency</div>
+        <div class="stat-value yellow" id="s-latency">—</div>
+        <div class="stat-sub">ms per task</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Failed</div>
+        <div class="stat-value" id="s-failed" style="color:var(--red)">—</div>
+        <div class="stat-sub">total errors</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Cache Size</div>
+        <div class="stat-value blue" id="s-cachesize">—</div>
+        <div class="stat-sub">cached prompts</div>
+      </div>
+    </div>
+
+    <!-- ── Rate limit bar ── -->
+    <div class="panel">
+      <div class="panel-header">
+        Groq Rate Limit
+        <span style="font-size:11px;color:var(--muted);font-weight:400">300 requests / minute</span>
+      </div>
+      <div class="panel-body">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px">
+          <span>Used this minute</span>
+          <span id="rate-used-label">— / 300</span>
+        </div>
+        <div class="rate-bar-track">
+          <div class="rate-bar-fill" id="rate-bar" style="width:0%;background:var(--green)"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Submit + Feed ── -->
+    <div class="two-col">
+
+      <!-- Submit -->
+      <div class="panel">
+        <div class="panel-header">Submit Prompt</div>
+        <div class="panel-body">
+          <label>Prompt</label>
+          <textarea id="prompt-input" placeholder="Enter your prompt here…"></textarea>
+
+          <div class="form-row">
+            <div>
+              <label>Priority</label>
+              <select id="priority-select">
+                <option value="normal">Normal</option>
+                <option value="high">High</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+            <div>
+              <label>Task ID (poll)</label>
+              <input type="text" id="task-id-input" placeholder="Paste task_id…" />
+            </div>
+          </div>
+
+          <div class="checkbox-row">
+            <input type="checkbox" id="cache-toggle" checked />
+            <span>Enable semantic cache</span>
+          </div>
+
+          <button id="submit-btn" onclick="submitPrompt()">Submit Prompt</button>
+          <button id="poll-btn" onclick="pollTask()" style="margin-top:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text)">Poll Task ID</button>
+
+          <div class="result-box" id="result-box"></div>
+          <div class="result-meta" id="result-meta"></div>
+        </div>
+      </div>
+
+      <!-- Activity feed -->
+      <div class="panel">
+        <div class="panel-header">
+          Live Activity
+          <span style="font-size:11px;color:var(--muted);font-weight:400" id="feed-count">0 tasks</span>
+        </div>
+        <div class="feed" id="feed">
+          <div class="empty-feed">No activity yet. Submit a prompt to get started.</div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script>
+const API = '';   // same origin; set to 'http://localhost:8000' if serving separately
+const feed = [];
+let statsInterval;
+
+// ── Stats polling ──────────────────────────────────────────────────────────
+async function fetchStats() {
+  try {
+    const r = await fetch(`${API}/stats`);
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+
+    document.getElementById('s-completed').textContent = d.tasks_completed ?? '—';
+    document.getElementById('s-queue').textContent = d.queue_depth ?? '—';
+    document.getElementById('s-cache').textContent = d.cache_hit_rate != null ? (d.cache_hit_rate * 100).toFixed(1) + '%' : '—';
+    document.getElementById('s-latency').textContent = d.avg_processing_time_ms != null ? Math.round(d.avg_processing_time_ms) : '—';
+    document.getElementById('s-failed').textContent = d.tasks_failed ?? '—';
+    document.getElementById('s-cachesize').textContent = d.cache_size ?? '—';
+    document.getElementById('worker-count').textContent = d.active_workers ?? '—';
+
+    const remain = d.rate_limit_remaining ?? 300;
+    const used = 300 - remain;
+    document.getElementById('rate-remain').textContent = remain;
+    document.getElementById('rate-used-label').textContent = `${used} / 300`;
+
+    const pct = Math.min(100, (used / 300) * 100);
+    const bar = document.getElementById('rate-bar');
+    bar.style.width = pct + '%';
+    bar.style.background = pct > 80 ? 'var(--red)' : pct > 50 ? 'var(--yellow)' : 'var(--green)';
+
+    const statusEl = document.getElementById('system-status');
+    if (d.active_workers > 0) {
+      statusEl.textContent = 'Healthy';
+      statusEl.className = 'badge badge-green';
+    } else {
+      statusEl.textContent = 'No Workers';
+      statusEl.className = 'badge badge-yellow';
+    }
+  } catch {
+    document.getElementById('system-status').textContent = 'Offline';
+    document.getElementById('system-status').className = 'badge badge-red';
+  }
+}
+
+// ── Submit ─────────────────────────────────────────────────────────────────
+async function submitPrompt() {
+  const prompt = document.getElementById('prompt-input').value.trim();
+  if (!prompt) return;
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Submitting…';
+
+  setResult('', []);
+
+  try {
+    const r = await fetch(`${API}/prompts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        priority: document.getElementById('priority-select').value,
+        cache_enabled: document.getElementById('cache-toggle').checked,
+      }),
+    });
+    const d = await r.json();
+    document.getElementById('task-id-input').value = d.task_id;
+
+    addFeedItem(d.task_id, prompt, d.status, d.cached);
+
+    if (d.status === 'cached') {
+      // Fetch the cached result immediately
+      await pollTask(d.task_id);
+    } else {
+      setResult(`Task queued!\nID: ${d.task_id}\nStatus: ${d.status}\nQueue position: ${d.queue_position ?? '—'}`, [
+        { label: `Priority: ${document.getElementById('priority-select').value}`, cls: '' },
+      ]);
+      autoPoller(d.task_id, prompt);
+    }
+  } catch (e) {
+    setResult(`Error: ${e.message}`, []);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Submit Prompt';
+  }
+}
+
+// ── Auto-poll until done ───────────────────────────────────────────────────
+function autoPoller(taskId, prompt) {
+  const MAX = 60; let attempts = 0;
+  const iv = setInterval(async () => {
+    attempts++;
+    if (attempts > MAX) { clearInterval(iv); return; }
+    try {
+      const r = await fetch(`${API}/prompts/${taskId}`);
+      const d = await r.json();
+      updateFeedItem(taskId, d.status);
+      if (d.status === 'completed' || d.status === 'cached') {
+        clearInterval(iv);
+        showResult(d);
+        fetchStats();
+      } else if (d.status === 'failed') {
+        clearInterval(iv);
+        setResult(`Failed: ${d.error}`, []);
+        fetchStats();
+      }
+    } catch { clearInterval(iv); }
+  }, 1500);
+}
+
+// ── Manual poll ────────────────────────────────────────────────────────────
+async function pollTask(id) {
+  const taskId = id || document.getElementById('task-id-input').value.trim();
+  if (!taskId) return;
+  const btn = document.getElementById('poll-btn');
+  btn.disabled = true;
+  try {
+    const r = await fetch(`${API}/prompts/${taskId}`);
+    const d = await r.json();
+    showResult(d);
+    updateFeedItem(taskId, d.status);
+  } catch (e) {
+    setResult(`Error: ${e.message}`, []);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function showResult(d) {
+  if (d.result) {
+    const pills = [
+      { label: d.cached ? '⚡ Cache hit' : '🤖 LLM call', cls: d.cached ? 'hit' : 'miss' },
+      d.processing_time_ms != null && { label: `${d.processing_time_ms}ms`, cls: '' },
+      d.tokens_used && { label: `${d.tokens_used} tokens`, cls: '' },
+      d.model && { label: d.model, cls: '' },
+      d.cache_similarity && { label: `similarity: ${d.cache_similarity}`, cls: 'hit' },
+    ].filter(Boolean);
+    setResult(d.result, pills);
+  } else {
+    setResult(`Status: ${d.status}\n${d.error ? 'Error: ' + d.error : ''}`, []);
+  }
+}
+
+function setResult(text, pills) {
+  const box = document.getElementById('result-box');
+  const meta = document.getElementById('result-meta');
+  box.textContent = text;
+  box.className = 'result-box' + (text ? ' visible' : '');
+  meta.innerHTML = pills.map(p =>
+    `<span class="meta-pill ${p.cls}">${p.label}</span>`
+  ).join('');
+}
+
+// ── Feed helpers ───────────────────────────────────────────────────────────
+function addFeedItem(id, prompt, status, cached) {
+  if (cached) status = 'cached';
+  feed.unshift({ id, prompt, status, time: new Date() });
+  if (feed.length > 50) feed.pop();
+  renderFeed();
+}
+
+function updateFeedItem(id, status) {
+  const item = feed.find(f => f.id === id);
+  if (item) { item.status = status; renderFeed(); }
+}
+
+function renderFeed() {
+  const el = document.getElementById('feed');
+  document.getElementById('feed-count').textContent = `${feed.length} task${feed.length !== 1 ? 's' : ''}`;
+  if (!feed.length) {
+    el.innerHTML = '<div class="empty-feed">No activity yet.</div>';
+    return;
+  }
+  el.innerHTML = feed.map(f => `
+    <div class="feed-item">
+      <div class="feed-dot ${f.status}"></div>
+      <div>
+        <div class="feed-prompt" title="${escHtml(f.prompt)}">${escHtml(f.prompt)}</div>
+        <div class="feed-sub">${f.id.slice(0, 16)}… · ${f.status}</div>
+      </div>
+      <div class="feed-time">${timeAgo(f.time)}</div>
+    </div>
+  `).join('');
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function timeAgo(d) {
+  const s = Math.floor((Date.now() - d) / 1000);
+  if (s < 60) return `${s}s ago`;
+  return `${Math.floor(s/60)}m ago`;
+}
+
+// ── Keyboard shortcut ──────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') submitPrompt();
+});
+
+// ── Init ───────────────────────────────────────────────────────────────────
+fetchStats();
+statsInterval = setInterval(() => { fetchStats(); renderFeed(); }, 4000);
+</script>
+</body>
+</html>

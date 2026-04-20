@@ -9,6 +9,7 @@ pydantic==2.9.2
 pydantic-settings==2.5.2
 httpx==0.27.2
 python-dotenv==1.0.1
+aiofiles==24.1.0
 flower==2.0.1
 structlog==24.4.0
 tenacity==9.0.0

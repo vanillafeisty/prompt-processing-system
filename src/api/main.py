@@ -14,6 +14,9 @@ import redis.asyncio as aioredis
 import structlog
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 
 from src.api.models import (
     Priority,
@@ -56,6 +59,16 @@ app = FastAPI(
     description="Distributed LLM prompt processing with semantic caching and durable execution.",
     lifespan=lifespan,
 )
+
+
+_static = Path(__file__).parent / "static"
+if _static.exists():
+    app.mount("/static", StaticFiles(directory=str(_static)), name="static")
+
+@app.get("/", include_in_schema=False)
+async def dashboard() -> FileResponse:
+    return FileResponse(str(_static / "index.html"))
+
 
 app.add_middleware(
     CORSMiddleware,

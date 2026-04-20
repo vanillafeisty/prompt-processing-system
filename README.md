@@ -1,67 +1,81 @@
-# Prompt Processing System
+# 🚀 Prompt Processing System
 
-A distributed, fault-tolerant prompt processing system built with **FastAPI**, **Redis**, **Celery**, and **Groq LLM**.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com/)
 
-## Architecture Overview
+> A **distributed, fault-tolerant prompt processing system** built with **FastAPI**, **Redis**, **Celery**, and **Groq LLM**. Process AI prompts efficiently with semantic caching, rate limiting, and horizontal scaling! ⚡
+
+## ✨ Features
+
+- 🔄 **Asynchronous Processing**: Handle multiple prompts concurrently with Celery workers
+- 🧠 **Semantic Caching**: Skip redundant LLM calls using embeddings and cosine similarity
+- 🛡️ **Rate Limiting**: Respect API limits with token bucket and sliding window algorithms
+- 📊 **Monitoring**: Built-in Flower dashboard for Celery task monitoring
+- 🐳 **Docker Ready**: One-command deployment with Docker Compose
+- 🔧 **Fault-Tolerant**: Durable task queues with crash recovery
+
+## 🏗️ Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                          REST API (FastAPI)                       │
+│                          🌐 REST API (FastAPI)                   │
 │              POST /prompts  GET /prompts/{id}  GET /stats        │
 └──────────────────────────────┬──────────────────────────────────┘
                                 │
                     ┌───────────▼──────────┐
-                    │   Semantic Cache     │  ← Redis + Embeddings
+                    │   🧠 Semantic Cache  │  ← Redis + Embeddings
                     │  (cosine similarity) │    (skip LLM if hit)
                     └───────────┬──────────┘
                     Cache Miss  │
                     ┌───────────▼──────────┐
-                    │    Task Queue        │  ← Redis Streams
+                    │    📋 Task Queue     │  ← Redis Streams
                     │    (Redis + Celery)  │    (durable, ordered)
                     └───────────┬──────────┘
                                 │
           ┌─────────────────────┼──────────────────┐
           │                     │                  │
    ┌──────▼──────┐      ┌───────▼──────┐   ┌──────▼──────┐
-   │  Worker 1   │      │  Worker 2    │   │  Worker N   │
+   │  ⚙️ Worker 1 │      │  ⚙️ Worker 2  │   │  ⚙️ Worker N │
    │ (Celery)    │      │  (Celery)    │   │  (Celery)   │
    └──────┬──────┘      └───────┬──────┘   └──────┬──────┘
           └─────────────────────┼──────────────────┘
                                 │
                     ┌───────────▼──────────┐
-                    │   Rate Limiter       │  ← Token Bucket
+                    │   🚦 Rate Limiter    │  ← Token Bucket
                     │  (300 req/min Groq)  │    sliding window
                     └───────────┬──────────┘
                                 │
                     ┌───────────▼──────────┐
-                    │     Groq LLM API     │
+                    │     🤖 Groq LLM API  │
                     └──────────────────────┘
 ```
 
-## Key Design Decisions
+## 🎯 Key Design Decisions
 
 | Concern | Solution | Why |
 |---|---|---|
-| Durable execution | Celery + Redis Streams | Tasks survive worker crashes; Redis Streams have consumer groups with acknowledgment |
-| Semantic caching | Redis + sentence-transformers cosine similarity | Avoid redundant LLM calls for semantically similar prompts (e.g. "Hello" vs "Hi there") |
-| Rate limiting | Token bucket per-process + Redis global counter | Respects 300 req/min Groq limit across all workers |
-| Parallel processing | Celery worker pool (configurable concurrency) | Horizontal scaling, each worker handles multiple tasks |
-| Crash recovery | Celery `acks_late=True` + visibility timeout | Tasks re-queued if worker dies mid-execution |
+| 💪 Durable execution | Celery + Redis Streams | Tasks survive worker crashes; Redis Streams have consumer groups with acknowledgment |
+| 🧠 Semantic caching | Redis + sentence-transformers cosine similarity | Avoid redundant LLM calls for semantically similar prompts (e.g. "Hello" vs "Hi there") |
+| 🚦 Rate limiting | Token bucket per-process + Redis global counter | Respects 300 req/min Groq limit across all workers |
+| ⚡ Parallel processing | Celery worker pool (configurable concurrency) | Horizontal scaling, each worker handles multiple tasks |
+| 🔄 Crash recovery | Celery `acks_late=True` + visibility timeout | Tasks re-queued if worker dies mid-execution |
 
-## Tech Stack
+## 🛠️ Tech Stack
 
-- **FastAPI** – async REST API
-- **Celery** – distributed task queue with retry logic
-- **Redis** – queue backend + cache + rate limiter
-- **Groq** – LLM provider (llama-3.1-8b-instant)
-- **sentence-transformers** – local embeddings for semantic cache
-- **Docker Compose** – single-command deployment
+- **FastAPI** – async REST API 🚀
+- **Celery** – distributed task queue with retry logic 📋
+- **Redis** – queue backend + cache + rate limiter 🗄️
+- **Groq** – LLM provider (llama-3.1-8b-instant) 🤖
+- **sentence-transformers** – local embeddings for semantic cache 🧠
+- **Docker Compose** – single-command deployment 🐳
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Prerequisites
-- Docker & Docker Compose
-- A [Groq API key](https://console.groq.com/)
+- 🐳 Docker & Docker Compose
+- 🔑 A [Groq API key](https://console.groq.com/)
 
 ### 1. Clone & Configure
 
@@ -79,10 +93,10 @@ docker-compose up --build
 ```
 
 This starts:
-- FastAPI server on `http://localhost:8000`
-- 3 Celery workers
-- Redis
-- Flower (Celery monitoring) on `http://localhost:5555`
+- 🌐 FastAPI server on `http://localhost:8000`
+- ⚙️ 3 Celery workers
+- 🗄️ Redis
+- 📊 Flower (Celery monitoring) on `http://localhost:5555`
 
 ### 3. Submit Prompts
 
@@ -97,6 +111,23 @@ curl -X POST http://localhost:8000/prompts \
 
 # Check result
 curl http://localhost:8000/prompts/abc-123
+```
+
+## 📖 API Documentation
+
+Once running, visit `http://localhost:8000/docs` for interactive Swagger UI documentation.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. 🛠️
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+Made with ❤️ using FastAPI, Celery, and Groq
 
 # View system stats
 curl http://localhost:8000/stats
